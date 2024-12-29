@@ -1,0 +1,282 @@
+openapi: 3.0.0
+info:
+  title: Run Management Service
+  description: Service for managing fitness activity runs
+  version: 1.0.0
+
+servers:
+  - url: /api/v1
+
+components:
+  schemas:
+    Run:
+      type: object
+      required:
+        - id
+        - userId
+        - startTime
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [active, paused, completed]
+        route:
+          type: object
+          properties:
+            coordinates:
+              type: array
+              items:
+                type: object
+                properties:
+                  latitude:
+                    type: number
+                    format: float
+                  longitude:
+                    type: number
+                    format: float
+                  timestamp:
+                    type: string
+                    format: date-time
+        stats:
+          type: object
+          properties:
+            distance:
+              type: number
+              format: float
+              description: Total distance in meters
+            duration:
+              type: integer
+              description: Total duration in seconds
+            averagePace:
+              type: number
+              format: float
+              description: Average pace in meters per second
+
+    StartRunRequest:
+      type: object
+      required:
+        - initialLocation
+      properties:
+        initialLocation:
+          $ref: '#/components/schemas/Coordinate'
+
+    Coordinate:
+      type: object
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          type: number
+          format: float
+        longitude:
+          type: number
+          format: float
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+paths:
+  /runs:
+    post:
+      summary: Start a new run
+      operationId: startRun
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartRunRequest'
+      responses:
+        '201':
+          description: Run started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Active run already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /runs/{runId}:
+    parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get run by ID
+      operationId: getRun
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Run found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '404':
+          description: Run not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /runs/{runId}/pause:
+    parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      summary: Pause an active run
+      operationId: pauseRun
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Run paused successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '404':
+          description: Run not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Run is not in active state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /runs/{runId}/resume:
+    parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      summary: Resume a paused run
+      operationId: resumeRun
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Run resumed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '404':
+          description: Run not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Run is not in paused state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /runs/{runId}/end:
+    parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      summary: End an active or paused run
+      operationId: endRun
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Run ended successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '404':
+          description: Run not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Run is already completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /runs/active:
+    get:
+      summary: Get user's active run
+      operationId: getActiveRun
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Active run found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '404':
+          description: No active run found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
